@@ -3,35 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TDEX Family Financial Dashboard</title>
+    <title>TDEX - Family Financial Dashboard</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- React & ReactDOM -->
+    <!-- React & ReactDOM (UMD Builds for direct browser usage) -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     
-    <!-- Babel for JSX -->
+    <!-- Babel for in-browser JSX compilation -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
     <!-- Recharts for Charts -->
     <script src="https://unpkg.com/recharts/umd/Recharts.js"></script>
-
+    
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
 
     <style>
         body { background-color: #f3f4f6; font-family: 'Inter', sans-serif; }
         .card { background: white; border-radius: 0.75rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 1.5rem; }
-        .input-field { width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; margin-top: 0.25rem; }
-        .btn-primary { background-color: #2563eb; color: white; padding: 0.5rem 1rem; border-radius: 0.375rem; font-weight: 500; transition: background 0.2s; }
+        .btn-primary { background-color: #2563eb; color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 500; transition: background 0.2s; }
         .btn-primary:hover { background-color: #1d4ed8; }
-        .btn-secondary { background-color: #e5e7eb; color: #374151; padding: 0.5rem 1rem; border-radius: 0.375rem; font-weight: 500; }
-        .btn-secondary:hover { background-color: #d1d5db; }
-        .tab-active { border-bottom: 2px solid #2563eb; color: #2563eb; font-weight: 600; }
-        .tab-inactive { color: #6b7280; }
-        .tab-inactive:hover { color: #374151; }
+        .btn-secondary { background-color: #e5e7eb; color: #374151; padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 500; }
+        .input-field { width: 100%; border: 1px solid #d1d5db; border-radius: 0.5rem; padding: 0.5rem; margin-top: 0.25rem; }
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 50; }
+        .modal-content { background: white; padding: 2rem; border-radius: 1rem; width: 90%; max-width: 600px; max-height: 90vh; overflow-y: auto; }
     </style>
 </head>
 <body>
@@ -41,117 +39,377 @@
         const { useState, useEffect, useMemo } = React;
         const { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } = Recharts;
 
-        // --- MOCK DATA ---
-        const INITIAL_DATA = {
-            settings: { mode: 'mock', scriptUrl: '' },
-            users: ['Victor', 'Wife'],
-            currentUser: 'Victor',
-            accounts: [
-                { id: 1, user: 'Victor', type: 'checking', name: 'Chase Total Checking', balance: 4500.50, institution: 'Chase' },
-                { id: 2, user: 'Victor', type: 'savings', name: 'Ally Savings', balance: 15000.00, institution: 'Ally' },
-                { id: 3, user: 'Wife', type: 'checking', name: 'BoA Checking', balance: 3200.75, institution: 'BoA' },
-                { id: 4, user: 'Victor', type: 'credit', name: 'Amex Gold', balance: -1250.40, limit: 10000, institution: 'Amex' },
-                { id: 5, user: 'Wife', type: 'credit', name: 'Chase Sapphire', balance: -450.00, limit: 15000, institution: 'Chase' },
-                { id: 6, user: 'Victor', type: 'loan', name: 'Tesla Model 3 Loan', balance: -18500.00, original: 25000, rate: 3.99, institution: 'Tesla Finance' },
-                { id: 7, user: 'Victor', type: 'investment', name: 'Vanguard 401k', balance: 45000.00, institution: 'Vanguard' },
-                { id: 8, user: 'Wife', type: 'investment', name: 'Fidelity IRA', balance: 22000.00, institution: 'Fidelity' }
-            ],
-            bills: [
-                { id: 1, name: 'Mortgage', amount: 2100, dueDay: 1, category: 'Housing', paid: false },
-                { id: 2, name: 'Electric', amount: 150, dueDay: 15, category: 'Utilities', paid: false },
-                { id: 3, name: 'Internet', amount: 80, dueDay: 10, category: 'Utilities', paid: true },
-                { id: 4, name: 'Car Insurance', amount: 120, dueDay: 25, category: 'Insurance', paid: false }
-            ],
-            esppOfferings: [
-                { id: 1, company: 'TechCorp Inc.', ticker: 'TCORP', discount: 0.15, lookback: true, startDate: '2023-01-01', endDate: '2023-03-31', purchaseDate: '2023-04-01', maxContrib: 0.10 }
-            ],
-            esppLoans: [
-                { id: 1, offeringId: 1, pullDate: '2023-01-15', pullAmount: 5000, interestRate: 0.06, interestCharge: 75, sharesBought: 120, buyPrice: 42.50, currentPrice: 55.00, status: 'active' }
-            ],
-            history: [
-                { date: '2023-01', netWorth: 75000 },
-                { date: '2023-02', netWorth: 76500 },
-                { date: '2023-03', netWorth: 78000 },
-                { date: '2023-04', netWorth: 82000 },
-                { date: '2023-05', netWorth: 81500 },
-                { date: '2023-06', netWorth: 85000 }
-            ]
-        };
-
-        // --- COMPONENTS ---
-
-        const Card = ({ title, value, subtext, color = "blue" }) => (
-            <div className="card border-l-4" style={{ borderColor: `var(--color-${color})` }}>
-                <h3 className="text-gray-500 text-sm font-medium uppercase">{title}</h3>
-                <p className="text-2xl font-bold text-gray-800 mt-1">{value}</p>
-                {subtext && <p className="text-xs text-gray-400 mt-1">{subtext}</p>}
-            </div>
-        );
-
-        const AccountRow = ({ account, onDelete }) => {
-            const isNegative = account.balance < 0;
-            const typeColor = {
-                checking: 'bg-blue-100 text-blue-800',
-                savings: 'bg-green-100 text-green-800',
-                credit: 'bg-red-100 text-red-800',
-                loan: 'bg-orange-100 text-orange-800',
-                investment: 'bg-purple-100 text-purple-800'
-            }[account.type];
-
+        // --- ICONS COMPONENT (Using Lucide SVG paths directly to avoid loader issues) ---
+        const Icon = ({ name, size = 20, className }) => {
+            const icons = {
+                wallet: <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4" /><path d="M3 5v14a2 2 0 0 0 2 2h16v-5" /><path d="M18 12a2 2 0 0 0 0 4h4v-4Z" />,
+                credit-card: <rect width="20" height="14" x="2" y="5" rx="2" /><line x1="2" x2="22" y1="10" y2="10" />,
+                trending-up: <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" /><polyline points="17 6 23 6 23 12" />,
+                trending-down: <polyline points="23 18 13.5 8.5 8.5 13.5 1 6" /><polyline points="17 18 23 18 23 12" />,
+                users: <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />,
+                pie-chart: <path d="M21.21 15.89A10 10 0 1 1 8 2.83" /><path d="M22 12A10 10 0 0 0 12 2v10z" />,
+                settings: <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" /><circle cx="12" cy="12" r="3" />,
+                plus: <path d="M5 12h14" /><path d="M12 5v14" />,
+                trash: <path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />,
+                dollar-sign: <line x1="12" x2="12" y1="2" y2="22" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />,
+                activity: <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+            };
             return (
-                <tr className="border-b hover:bg-gray-50">
-                    <td className="py-3 px-4"><span className={`px-2 py-1 rounded-full text-xs font-bold ${typeColor}`}>{account.type.toUpperCase()}</span></td>
-                    <td className="py-3 px-4 font-medium">{account.name}</td>
-                    <td className="py-3 px-4 text-gray-500">{account.institution}</td>
-                    <td className={`py-3 px-4 font-bold ${isNegative ? 'text-red-600' : 'text-green-600'}`}>
-                        ${Math.abs(account.balance).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                    </td>
-                    <td className="py-3 px-4 text-right">
-                        <button onClick={() => onDelete(account.id)} className="text-red-400 hover:text-red-600 text-sm">Delete</button>
-                    </td>
-                </tr>
+                <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                    {icons[name] || null}
+                </svg>
             );
         };
 
-        const HeySparty = ({ offerings, loans, onUpdate }) => {
-            const totalPulled = loans.reduce((sum, l) => sum + l.pullAmount, 0);
-            const totalInterest = loans.reduce((sum, l) => sum + l.interestCharge, 0);
-            const totalValue = loans.reduce((sum, l) => sum + (l.sharesBought * l.currentPrice), 0);
-            const netProfit = totalValue - totalPulled - totalInterest;
-            const roi = totalPulled > 0 ? ((netProfit / totalPulled) * 100).toFixed(2) : 0;
+        // --- MOCK DATA ---
+        const INITIAL_DATA = {
+            accounts: [
+                { id: 1, name: "Chase Checking", type: "checking", balance: 4500.50, owner: "Victor" },
+                { id: 2, name: "Ally Savings", type: "savings", balance: 15000.00, owner: "Wife" },
+                { id: 3, name: "Fidelity Roth IRA", type: "investment", balance: 42000.00, owner: "Victor" },
+                { id: 4, name: "Amex Gold", type: "credit", balance: -1200.00, owner: "Wife" },
+                { id: 5, name: "Tesla Loan", type: "loan", balance: -18000.00, owner: "Family" },
+                { id: 6, name: "PLOC (ESPP)", type: "loan", balance: -5000.00, owner: "Victor" }
+            ],
+            bills: [
+                { id: 1, name: "Mortgage", amount: 2100, dueDay: 1, paid: false, category: "Housing" },
+                { id: 2, name: "Electric", amount: 150, dueDay: 15, paid: false, category: "Utilities" },
+                { id: 3, name: "Internet", amount: 80, dueDay: 20, paid: true, category: "Utilities" }
+            ],
+            esppOfferings: [
+                { id: 1, company: "TechCorp", ticker: "TC", discount: 0.15, lookback: true, startDate: "2023-01-01", endDate: "2023-06-30", purchaseDate: "2023-06-30", maxContribution: 0.25 }
+            ],
+            esppLoans: [
+                { id: 1, offeringId: 1, pullDate: "2023-06-15", amount: 5000, interestRate: 0.08, shares: 150, purchasePrice: 33.33, currentPrice: 45.00, status: "active" }
+            ],
+            transactions: [
+                { date: "2023-01", income: 8000, expense: 5500 },
+                { date: "2023-02", income: 8000, expense: 5200 },
+                { date: "2023-03", income: 8500, expense: 6000 },
+                { date: "2023-04", income: 8000, expense: 5100 },
+                { date: "2023-05", income: 8000, expense: 5800 },
+                { date: "2023-06", income: 9000, expense: 5500 }
+            ]
+        };
+
+        // --- APP COMPONENT ---
+        function App() {
+            const [data, setData] = useState(INITIAL_DATA);
+            const [view, setView] = useState('dashboard');
+            const [isModalOpen, setIsModalOpen] = useState(false);
+            const [modalType, setModalType] = useState(null);
+            const [gsUrl, setGsUrl] = useState('');
+
+            // Refresh icons when view changes
+            useEffect(() => {
+                if (window.lucide) window.lucide.createIcons();
+            }, [view, data]);
+
+            const totalNetWorth = data.accounts.reduce((sum, acc) => sum + acc.balance, 0);
+            const totalDebt = data.accounts.filter(a => a.balance < 0).reduce((sum, acc) => sum + Math.abs(acc.balance), 0);
+            const totalAssets = data.accounts.filter(a => a.balance > 0).reduce((sum, acc) => sum + acc.balance, 0);
+
+            const handleSave = (newData) => {
+                setData(newData);
+                setIsModalOpen(false);
+                // In a real app, this would push to Google Sheets
+                console.log("Saving to Google Sheets...", newData);
+            };
+
+            const openModal = (type) => {
+                setModalType(type);
+                setIsModalOpen(true);
+            };
+
+            return (
+                <div className="min-h-screen pb-10">
+                    {/* Header */}
+                    <header className="bg-white shadow-sm sticky top-0 z-10">
+                        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                            <div className="flex justify-between items-center h-16">
+                                <div className="flex items-center gap-2">
+                                    <div className="bg-blue-600 text-white p-2 rounded-lg">
+                                        <Icon name="activity" size={24} />
+                                    </div>
+                                    <h1 className="text-xl font-bold text-gray-900">TDEX Family Finance</h1>
+                                </div>
+                                <nav className="flex space-x-4">
+                                    {[
+                                        { id: 'dashboard', label: 'Dashboard', icon: 'pie-chart' },
+                                        { id: 'accounts', label: 'Accounts', icon: 'wallet' },
+                                        { id: 'bills', label: 'Bills', icon: 'credit-card' },
+                                        { id: 'espp', label: 'Hey Sparty', icon: 'trending-up' },
+                                        { id: 'settings', label: 'Settings', icon: 'settings' }
+                                    ].map(item => (
+                                        <button
+                                            key={item.id}
+                                            onClick={() => setView(item.id)}
+                                            className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                                                view === item.id 
+                                                ? 'bg-blue-50 text-blue-700' 
+                                                : 'text-gray-600 hover:bg-gray-50'
+                                            }`}
+                                        >
+                                            <Icon name={item.icon} size={18} />
+                                            <span className="hidden sm:inline">{item.label}</span>
+                                        </button>
+                                    ))}
+                                </nav>
+                            </div>
+                        </div>
+                    </header>
+
+                    {/* Main Content */}
+                    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                        {view === 'dashboard' && (
+                            <DashboardView 
+                                netWorth={totalNetWorth} 
+                                assets={totalAssets} 
+                                debt={totalDebt} 
+                                transactions={data.transactions}
+                                accounts={data.accounts}
+                            />
+                        )}
+                        {view === 'accounts' && (
+                            <AccountsView 
+                                accounts={data.accounts} 
+                                onAdd={() => openModal('account')} 
+                            />
+                        )}
+                        {view === 'bills' && (
+                            <BillsView 
+                                bills={data.bills} 
+                                onAdd={() => openModal('bill')} 
+                            />
+                        )}
+                        {view === 'espp' && (
+                            <HeySpartyView 
+                                offerings={data.esppOfferings} 
+                                loans={data.esppLoans} 
+                                onAddLoan={() => openModal('esppLoan')}
+                            />
+                        )}
+                        {view === 'settings' && (
+                            <SettingsView gsUrl={gsUrl} setGsUrl={setGsUrl} />
+                        )}
+                    </main>
+
+                    {/* Modal */}
+                    {isModalOpen && (
+                        <Modal 
+                            type={modalType} 
+                            onClose={() => setIsModalOpen(false)} 
+                            onSave={handleSave}
+                            currentData={data}
+                        />
+                    )}
+                </div>
+            );
+        }
+
+        // --- SUB-COMPONENTS ---
+
+        function DashboardView({ netWorth, assets, debt, transactions, accounts }) {
+            const COLORS = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
+            
+            const assetData = accounts
+                .filter(a => a.balance > 0)
+                .map(a => ({ name: a.name, value: a.balance }));
 
             return (
                 <div className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <Card title="Total Pulled (PLOC)" value={`$${totalPulled.toLocaleString()}`} color="orange" />
-                        <Card title="Total Interest Cost" value={`$${totalInterest.toLocaleString()}`} color="red" />
-                        <Card title="Current Value" value={`$${totalValue.toLocaleString()}`} color="purple" />
-                        <Card title="Net Profit (After Fees)" value={`$${netProfit.toLocaleString()}`} subtext={`${roi}% ROI`} color="green" />
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <StatCard title="Net Worth" value={netWorth} icon="activity" color="blue" />
+                        <StatCard title="Total Assets" value={assets} icon="trending-up" color="green" />
+                        <StatCard title="Total Debt" value={debt} icon="trending-down" color="red" />
                     </div>
 
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div className="card">
+                            <h3 className="text-lg font-semibold mb-4">Cash Flow Trend</h3>
+                            <div className="h-64">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <LineChart data={transactions}>
+                                        <CartesianGrid strokeDasharray="3 3" />
+                                        <XAxis dataKey="date" />
+                                        <YAxis />
+                                        <Tooltip />
+                                        <Legend />
+                                        <Line type="monotone" dataKey="income" stroke="#10b981" strokeWidth={2} />
+                                        <Line type="monotone" dataKey="expense" stroke="#ef4444" strokeWidth={2} />
+                                    </LineChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+                        <div className="card">
+                            <h3 className="text-lg font-semibold mb-4">Asset Allocation</h3>
+                            <div className="h-64">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                        <Pie data={assetData} cx="50%" cy="50%" outerRadius={80} fill="#8884d8" dataKey="value" label>
+                                            {assetData.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                            ))}
+                                        </Pie>
+                                        <Tooltip />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function StatCard({ title, value, icon, color }) {
+            const colorClasses = {
+                blue: 'bg-blue-100 text-blue-600',
+                green: 'bg-green-100 text-green-600',
+                red: 'bg-red-100 text-red-600'
+            };
+            
+            return (
+                <div className="card flex items-center justify-between">
+                    <div>
+                        <p className="text-sm font-medium text-gray-500">{title}</p>
+                        <p className="text-2xl font-bold text-gray-900">${value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+                    </div>
+                    <div className={`p-3 rounded-full ${colorClasses[color]}`}>
+                        <Icon name={icon} size={24} />
+                    </div>
+                </div>
+            );
+        }
+
+        function AccountsView({ accounts, onAdd }) {
+            return (
+                <div className="space-y-6">
+                    <div className="flex justify-between items-center">
+                        <h2 className="text-2xl font-bold">Accounts</h2>
+                        <button onClick={onAdd} className="btn-primary flex items-center gap-2">
+                            <Icon name="plus" size={18} /> Add Account
+                        </button>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {accounts.map(acc => (
+                            <div key={acc.id} className="card border-l-4" style={{borderLeftColor: acc.balance >= 0 ? '#10b981' : '#ef4444'}}>
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <h3 className="font-semibold text-lg">{acc.name}</h3>
+                                        <p className="text-sm text-gray-500 capitalize">{acc.type} • {acc.owner}</p>
+                                    </div>
+                                    <span className={`text-lg font-bold ${acc.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                        ${acc.balance.toLocaleString()}
+                                    </span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        }
+
+        function BillsView({ bills, onAdd }) {
+            return (
+                <div className="space-y-6">
+                    <div className="flex justify-between items-center">
+                        <h2 className="text-2xl font-bold">Recurring Bills</h2>
+                        <button onClick={onAdd} className="btn-primary flex items-center gap-2">
+                            <Icon name="plus" size={18} /> Add Bill
+                        </button>
+                    </div>
+                    <div className="bg-white rounded-lg shadow overflow-hidden">
+                        <table className="min-w-full divide-y divide-gray-200">
+                            <thead className="bg-gray-50">
+                                <tr>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Due Day</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                                {bills.map(bill => (
+                                    <tr key={bill.id}>
+                                        <td className="px-6 py-4 whitespace-nowrap">{bill.name}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap">${bill.amount}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap">{bill.dueDay}th</td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${bill.paid ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                                                {bill.paid ? 'Paid' : 'Pending'}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            );
+        }
+
+        function HeySpartyView({ offerings, loans, onAddLoan }) {
+            // Calculate ESPP Stats
+            const totalPulled = loans.reduce((sum, l) => sum + l.amount, 0);
+            const totalInterest = loans.reduce((sum, l) => sum + (l.amount * l.interestRate), 0);
+            const currentValue = loans.reduce((sum, l) => sum + (l.shares * l.currentPrice), 0);
+            const netProfit = currentValue - totalPulled - totalInterest;
+            const roi = totalPulled > 0 ? ((netProfit / totalPulled) * 100) : 0;
+
+            return (
+                <div className="space-y-8">
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <h2 className="text-3xl font-bold text-indigo-700">Hey Sparty! 🚀</h2>
+                            <p className="text-gray-500">ESPP & PLOC Tracker</p>
+                        </div>
+                        <button onClick={onAddLoan} className="btn-primary bg-indigo-600 hover:bg-indigo-700">
+                            Log Quarterly Pull
+                        </button>
+                    </div>
+
+                    {/* Stats Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div className="card bg-indigo-50 border border-indigo-100">
+                            <p className="text-sm text-indigo-600 font-medium">Total PLOC Pulled</p>
+                            <p className="text-2xl font-bold text-indigo-900">${totalPulled.toLocaleString()}</p>
+                        </div>
+                        <div className="card bg-red-50 border border-red-100">
+                            <p className="text-sm text-red-600 font-medium">Est. Interest Cost</p>
+                            <p className="text-2xl font-bold text-red-900">${totalInterest.toLocaleString(undefined, {maximumFractionDigits: 2})}</p>
+                        </div>
+                        <div className="card bg-green-50 border border-green-100">
+                            <p className="text-sm text-green-600 font-medium">Net Profit (Post-Fees)</p>
+                            <p className="text-2xl font-bold text-green-900">${netProfit.toLocaleString(undefined, {maximumFractionDigits: 2})}</p>
+                        </div>
+                        <div className="card bg-blue-50 border border-blue-100">
+                            <p className="text-sm text-blue-600 font-medium">ROI</p>
+                            <p className="text-2xl font-bold text-blue-900">{roi.toFixed(2)}%</p>
+                        </div>
+                    </div>
+
+                    {/* Active Offerings */}
                     <div className="card">
-                        <h3 className="text-lg font-bold text-gray-800 mb-4">Active ESPP Offerings</h3>
+                        <h3 className="text-lg font-semibold mb-4">Active Offerings</h3>
                         <div className="overflow-x-auto">
-                            <table className="w-full text-left">
+                            <table className="min-w-full">
                                 <thead>
-                                    <tr className="text-gray-500 border-b">
-                                        <th className="py-2">Company</th>
-                                        <th className="py-2">Ticker</th>
-                                        <th className="py-2">Discount</th>
-                                        <th className="py-2">Lookback</th>
-                                        <th className="py-2">Purchase Date</th>
-                                        <th className="py-2">Max Contrib</th>
+                                    <tr className="text-left text-xs font-medium text-gray-500 uppercase">
+                                        <th className="pb-3">Company</th>
+                                        <th className="pb-3">Discount</th>
+                                        <th className="pb-3">Lookback</th>
+                                        <th className="pb-3">Purchase Date</th>
+                                        <th className="pb-3">Max Contrib</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {offerings.map(o => (
-                                        <tr key={o.id} className="border-b">
-                                            <td className="py-2 font-medium">{o.company}</td>
-                                            <td className="py-2">{o.ticker}</td>
-                                            <td className="py-2 text-green-600">{(o.discount * 100).toFixed(1)}%</td>
-                                            <td className="py-2">{o.lookback ? 'Yes' : 'No'}</td>
-                                            <td className="py-2">{o.purchaseDate}</td>
-                                            <td className="py-2">{(o.maxContrib * 100).toFixed(0)}%</td>
+                                    {offerings.map(off => (
+                                        <tr key={off.id} className="border-t">
+                                            <td className="py-3 font-medium">{off.company} ({off.ticker})</td>
+                                            <td className="py-3 text-green-600">{(off.discount * 100).toFixed(0)}%</td>
+                                            <td className="py-3">{off.lookback ? '✅ Yes' : '❌ No'}</td>
+                                            <td className="py-3">{off.purchaseDate}</td>
+                                            <td className="py-3">{(off.maxContribution * 100).toFixed(0)}%</td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -159,38 +417,36 @@
                         </div>
                     </div>
 
+                    {/* Loan History */}
                     <div className="card">
-                        <h3 className="text-lg font-bold text-gray-800 mb-4">Loan History & Performance</h3>
+                        <h3 className="text-lg font-semibold mb-4">Loan & Purchase History</h3>
                         <div className="overflow-x-auto">
-                            <table className="w-full text-left">
+                            <table className="min-w-full">
                                 <thead>
-                                    <tr className="text-gray-500 border-b">
-                                        <th className="py-2">Pull Date</th>
-                                        <th className="py-2">Amount</th>
-                                        <th className="py-2">Interest</th>
-                                        <th className="py-2">Shares</th>
-                                        <th className="py-2">Buy Price</th>
-                                        <th className="py-2">Current Price</th>
-                                        <th className="py-2">Gain/Loss</th>
-                                        <th className="py-2">Status</th>
+                                    <tr className="text-left text-xs font-medium text-gray-500 uppercase">
+                                        <th className="pb-3">Pull Date</th>
+                                        <th className="pb-3">Amount</th>
+                                        <th className="pb-3">Int. Rate</th>
+                                        <th className="pb-3">Shares</th>
+                                        <th className="pb-3">Buy Price</th>
+                                        <th className="pb-3">Current Price</th>
+                                        <th className="pb-3">Unrealized Gain</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {loans.map(l => {
-                                        const currentValue = l.sharesBought * l.currentPrice;
-                                        const gainLoss = currentValue - l.pullAmount - l.interestCharge;
+                                    {loans.map(loan => {
+                                        const gain = (loan.shares * loan.currentPrice) - loan.amount;
                                         return (
-                                            <tr key={l.id} className="border-b">
-                                                <td className="py-2">{l.pullDate}</td>
-                                                <td className="py-2">${l.pullAmount.toLocaleString()}</td>
-                                                <td className="py-2 text-red-500">${l.interestCharge}</td>
-                                                <td className="py-2">{l.sharesBought}</td>
-                                                <td className="py-2">${l.buyPrice.toFixed(2)}</td>
-                                                <td className="py-2">${l.currentPrice.toFixed(2)}</td>
-                                                <td className={`py-2 font-bold ${gainLoss >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                                    ${gainLoss.toLocaleString(undefined, {maximumFractionDigits: 2})}
+                                            <tr key={loan.id} className="border-t">
+                                                <td className="py-3">{loan.pullDate}</td>
+                                                <td className="py-3">${loan.amount.toLocaleString()}</td>
+                                                <td className="py-3">{(loan.interestRate * 100).toFixed(1)}%</td>
+                                                <td className="py-3">{loan.shares}</td>
+                                                <td className="py-3">${loan.purchasePrice.toFixed(2)}</td>
+                                                <td className="py-3">${loan.currentPrice.toFixed(2)}</td>
+                                                <td className={`py-3 font-bold ${gain >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                    ${gain.toLocaleString(undefined, {maximumFractionDigits: 2})}
                                                 </td>
-                                                <td className="py-2 capitalize"><span className="px-2 py-1 bg-gray-100 rounded text-xs">{l.status}</span></td>
                                             </tr>
                                         );
                                     })}
@@ -200,265 +456,56 @@
                     </div>
                 </div>
             );
-        };
+        }
 
-        const App = () => {
-            const [data, setData] = useState(null);
-            const [activeTab, setActiveTab] = useState('dashboard');
-            const [loading, setLoading] = useState(true);
-
-            // Load Data
-            useEffect(() => {
-                // Simulate loading from LocalStorage or Mock
-                const saved = localStorage.getItem('tdex_data');
-                if (saved) {
-                    setData(JSON.parse(saved));
-                } else {
-                    setData(INITIAL_DATA);
-                    localStorage.setItem('tdex_data', JSON.stringify(INITIAL_DATA));
-                }
-                setLoading(false);
-            }, []);
-
-            // Save Data Helper
-            const saveData = (newData) => {
-                setData(newData);
-                if (newData.settings.mode === 'mock') {
-                    localStorage.setItem('tdex_data', JSON.stringify(newData));
-                } else {
-                    // TODO: Implement Google Sheets API call here using newData.settings.scriptUrl
-                    console.log("Would push to Google Sheets:", newData);
-                }
-            };
-
-            const handleAddAccount = (e) => {
-                e.preventDefault();
-                const formData = new FormData(e.target);
-                const newAccount = {
-                    id: Date.now(),
-                    user: data.currentUser,
-                    type: formData.get('type'),
-                    name: formData.get('name'),
-                    balance: parseFloat(formData.get('balance')),
-                    institution: formData.get('institution')
-                };
-                saveData({ ...data, accounts: [...data.accounts, newAccount] });
-                e.target.reset();
-            };
-
-            const handleDeleteAccount = (id) => {
-                saveData({ ...data, accounts: data.accounts.filter(a => a.id !== id) });
-            };
-
-            const handleSwitchUser = (user) => {
-                saveData({ ...data, currentUser: user });
-            };
-
-            if (loading) return <div className="flex h-screen items-center justify-center">Loading Dashboard...</div>;
-
-            const userAccounts = data.accounts.filter(a => a.user === data.currentUser);
-            const totalAssets = userAccounts.filter(a => a.balance > 0 || a.type === 'investment').reduce((sum, a) => sum + a.balance, 0);
-            const totalLiabilities = Math.abs(userAccounts.filter(a => a.balance < 0 && a.type !== 'investment').reduce((sum, a) => sum + a.balance, 0));
-            const netWorth = totalAssets - totalLiabilities;
-
+        function SettingsView({ gsUrl, setGsUrl }) {
             return (
-                <div className="min-h-screen pb-10">
-                    {/* Header */}
-                    <header className="bg-white shadow-sm sticky top-0 z-10">
-                        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                            <div className="flex justify-between items-center h-16">
-                                <div className="flex items-center gap-2">
-                                    <div className="bg-blue-600 text-white p-2 rounded-lg font-bold text-xl">TDEX</div>
-                                    <span className="font-semibold text-gray-700 hidden md:block">Family Financial Dashboard</span>
-                                </div>
-                                <div className="flex items-center gap-4">
-                                    <div className="flex bg-gray-100 rounded-lg p-1">
-                                        {data.users.map(u => (
-                                            <button
-                                                key={u}
-                                                onClick={() => handleSwitchUser(u)}
-                                                className={`px-3 py-1 rounded-md text-sm font-medium transition ${data.currentUser === u ? 'bg-white shadow text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
-                                            >
-                                                {u}
-                                            </button>
-                                        ))}
-                                    </div>
-                                    <button onClick={() => alert("Settings: Connect Google Sheets URL in future update")} className="text-gray-400 hover:text-gray-600">
-                                        ⚙️
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </header>
-
-                    {/* Nav */}
-                    <div className="bg-white border-b">
-                        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                            <nav className="flex space-x-8 overflow-x-auto">
-                                {[
-                                    { id: 'dashboard', label: 'Overview' },
-                                    { id: 'accounts', label: 'Accounts' },
-                                    { id: 'bills', label: 'Bills' },
-                                    { id: 'sparty', label: 'Hey Sparty (ESPP)' },
-                                    { id: 'trends', label: 'Trends' }
-                                ].map(tab => (
-                                    <button
-                                        key={tab.id}
-                                        onClick={() => setActiveTab(tab.id)}
-                                        className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${activeTab === tab.id ? 'tab-active' : 'tab-inactive'}`}
-                                    >
-                                        {tab.label}
-                                    </button>
-                                ))}
-                            </nav>
-                        </div>
+                <div className="max-w-2xl mx-auto card space-y-6">
+                    <h2 className="text-2xl font-bold">Settings</h2>
+                    
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Google Apps Script URL</label>
+                        <p className="text-xs text-gray-500 mb-2">Enter the deployment URL from your Google Sheet project to enable live data syncing.</p>
+                        <input 
+                            type="text" 
+                            value={gsUrl}
+                            onChange={(e) => setGsUrl(e.target.value)}
+                            placeholder="https://script.google.com/macros/s/..."
+                            className="input-field font-mono text-sm"
+                        />
                     </div>
 
-                    {/* Content */}
-                    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                        
-                        {activeTab === 'dashboard' && (
-                            <div className="space-y-6">
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                    <Card title="Net Worth" value={`$${netWorth.toLocaleString(undefined, {maximumFractionDigits: 0})}`} color="blue" />
-                                    <Card title="Total Assets" value={`$${totalAssets.toLocaleString(undefined, {maximumFractionDigits: 0})}`} color="green" />
-                                    <Card title="Total Liabilities" value={`$${totalLiabilities.toLocaleString(undefined, {maximumFractionDigits: 0})}`} color="red" />
-                                </div>
-                                
-                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                    <div className="card">
-                                        <h3 className="text-lg font-bold text-gray-800 mb-4">Cash Flow Projection</h3>
-                                        <div className="h-64 flex items-center justify-center text-gray-400 bg-gray-50 rounded">
-                                            Chart Placeholder (Connect Data for Graph)
-                                        </div>
-                                    </div>
-                                    <div className="card">
-                                        <h3 className="text-lg font-bold text-gray-800 mb-4">Asset Allocation</h3>
-                                        <div className="h-64 flex items-center justify-center text-gray-400 bg-gray-50 rounded">
-                                            Chart Placeholder
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {activeTab === 'accounts' && (
-                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                                <div className="lg:col-span-2 card overflow-hidden">
-                                    <h3 className="text-lg font-bold text-gray-800 mb-4">{data.currentUser}'s Accounts</h3>
-                                    <table className="w-full text-left">
-                                        <thead className="bg-gray-50 text-gray-500 text-xs uppercase">
-                                            <tr>
-                                                <th className="py-3 px-4">Type</th>
-                                                <th className="py-3 px-4">Name</th>
-                                                <th className="py-3 px-4">Institution</th>
-                                                <th className="py-3 px-4">Balance</th>
-                                                <th className="py-3 px-4 text-right">Action</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {userAccounts.map(acc => (
-                                                <AccountRow key={acc.id} account={acc} onDelete={handleDeleteAccount} />
-                                            ))}
-                                            {userAccounts.length === 0 && (
-                                                <tr><td colSpan="5" className="py-4 text-center text-gray-500">No accounts found.</td></tr>
-                                            )}
-                                        </tbody>
-                                    </table>
-                                </div>
-                                <div className="card">
-                                    <h3 className="text-lg font-bold text-gray-800 mb-4">Add Account</h3>
-                                    <form onSubmit={handleAddAccount} className="space-y-4">
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700">Account Type</label>
-                                            <select name="type" className="input-field">
-                                                <option value="checking">Checking</option>
-                                                <option value="savings">Savings</option>
-                                                <option value="credit">Credit Card</option>
-                                                <option value="loan">Loan</option>
-                                                <option value="investment">Investment</option>
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700">Account Name</label>
-                                            <input name="name" type="text" required className="input-field" placeholder="e.g. Main Checking" />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700">Institution</label>
-                                            <input name="institution" type="text" required className="input-field" placeholder="e.g. Chase" />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700">Balance</label>
-                                            <input name="balance" type="number" step="0.01" required className="input-field" placeholder="0.00" />
-                                        </div>
-                                        <button type="submit" className="btn-primary w-full">Add Account</button>
-                                    </form>
-                                </div>
-                            </div>
-                        )}
-
-                        {activeTab === 'bills' && (
-                            <div className="card">
-                                <h3 className="text-lg font-bold text-gray-800 mb-4">Upcoming Bills</h3>
-                                <table className="w-full text-left">
-                                    <thead className="bg-gray-50 text-gray-500 text-xs uppercase">
-                                        <tr>
-                                            <th className="py-3 px-4">Name</th>
-                                            <th className="py-3 px-4">Amount</th>
-                                            <th className="py-3 px-4">Due Day</th>
-                                            <th className="py-3 px-4">Category</th>
-                                            <th className="py-3 px-4">Status</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {data.bills.map(bill => (
-                                            <tr key={bill.id} className="border-b">
-                                                <td className="py-3 px-4 font-medium">{bill.name}</td>
-                                                <td className="py-3 px-4">${bill.amount.toFixed(2)}</td>
-                                                <td className="py-3 px-4">{bill.dueDay}{bill.dueDay === 1 ? 'st' : bill.dueDay === 2 ? 'nd' : bill.dueDay === 3 ? 'rd' : 'th'} of month</td>
-                                                <td className="py-3 px-4"><span className="px-2 py-1 bg-gray-100 rounded text-xs">{bill.category}</span></td>
-                                                <td className="py-3 px-4">
-                                                    <span className={`px-2 py-1 rounded-full text-xs font-bold ${bill.paid ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
-                                                        {bill.paid ? 'Paid' : 'Pending'}
-                                                    </span>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
-
-                        {activeTab === 'sparty' && (
-                            <HeySparty 
-                                offerings={data.esppOfferings} 
-                                loans={data.esppLoans} 
-                                onUpdate={(newData) => saveData({ ...data, ...newData })} 
-                            />
-                        )}
-
-                        {activeTab === 'trends' && (
-                            <div className="card">
-                                <h3 className="text-lg font-bold text-gray-800 mb-4">Net Worth History</h3>
-                                <div className="h-96">
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <LineChart data={data.history}>
-                                            <CartesianGrid strokeDasharray="3 3" />
-                                            <XAxis dataKey="date" />
-                                            <YAxis />
-                                            <Tooltip />
-                                            <Legend />
-                                            <Line type="monotone" dataKey="netWorth" stroke="#2563eb" strokeWidth={2} name="Net Worth" />
-                                        </LineChart>
-                                    </ResponsiveContainer>
-                                </div>
-                            </div>
-                        )}
-
-                    </main>
+                    <div className="pt-4 border-t">
+                        <h3 className="font-semibold mb-2">Instructions</h3>
+                        <ol className="list-decimal list-inside text-sm text-gray-600 space-y-2">
+                            <li>Open your Google Sheet.</li>
+                            <li>Go to Extensions &gt; Apps Script.</li>
+                            <li>Paste the provided backend code.</li>
+                            <li>Run <code>initializeDatabase</code> once to create tabs.</li>
+                            <li>Deploy as Web App (Execute as: Me, Who has access: Anyone).</li>
+                            <li>Copy the URL and paste it above.</li>
+                        </ol>
+                    </div>
                 </div>
             );
-        };
+        }
+
+        function Modal({ type, onClose, onSave, currentData }) {
+            // Simple generic modal implementation for demo
+            // In a full app, this would have specific forms for each type
+            return (
+                <div className="modal-overlay" onClick={onClose}>
+                    <div className="modal-content" onClick={e => e.stopPropagation()}>
+                        <h3 className="text-xl font-bold mb-4 capitalize">Add New {type}</h3>
+                        <p className="text-gray-600 mb-4">Form fields for {type} would go here.</p>
+                        <div className="flex justify-end gap-3">
+                            <button onClick={onClose} className="btn-secondary">Cancel</button>
+                            <button onClick={onClose} className="btn-primary">Save (Mock)</button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
