@@ -3,326 +3,453 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TDEX - Financial Dashboard</title>
+    <title>TDEX | Family Financial Dashboard</title>
+    
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Recharts for Charts -->
+    <script src="https://unpkg.com/recharts/umd/Recharts.js"></script>
+
+    <!-- Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
     <style>
-        body { background-color: #0f172a; color: #e2e8f0; font-family: 'Inter', sans-serif; }
-        .card { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
-        .glass-panel { background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255,255,255,0.05); }
-        .text-gradient { background: linear-gradient(to right, #38bdf8, #818cf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .positive { color: #4ade80; }
-        .negative { color: #f87171; }
+        body { background-color: #f3f4f6; font-family: 'Inter', sans-serif; }
+        .card { background: white; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); padding: 1.5rem; }
+        .nav-item { cursor: pointer; padding: 0.75rem 1rem; border-radius: 8px; transition: all 0.2s; display: flex; align-items: center; gap: 0.75rem; }
+        .nav-item:hover { background-color: #e5e7eb; }
+        .nav-item.active { background-color: #2563eb; color: white; }
+        .input-field { width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 6px; margin-top: 0.25rem; }
+        .btn { padding: 0.5rem 1rem; border-radius: 6px; font-weight: 500; cursor: pointer; border: none; transition: opacity 0.2s; }
+        .btn-primary { background-color: #2563eb; color: white; }
+        .btn-danger { background-color: #dc2626; color: white; }
+        .btn-success { background-color: #16a34a; color: white; }
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 50; }
+        .modal-content { background: white; padding: 2rem; border-radius: 12px; width: 90%; max-width: 600px; max-height: 90vh; overflow-y: auto; }
     </style>
 </head>
-<body class="min-h-screen p-4 md:p-8">
+<body>
+    <div id="root"></div>
 
-    <!-- Header -->
-    <header class="max-w-7xl mx-auto mb-8 flex justify-between items-center">
-        <div>
-            <h1 class="text-3xl font-bold text-gradient">TDEX Dashboard</h1>
-            <p class="text-slate-400 text-sm">Real-time Net Worth & ESPP Tracker</p>
-        </div>
-        <button onclick="loadData()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition">
-            <i data-lucide="refresh-cw" class="w-4 h-4"></i> Refresh Data
-        </button>
-    </header>
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+        const { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } = Recharts;
+        const { Wallet, CreditCard, TrendingUp, Activity, Settings, Plus, Trash2, Edit, DollarSign, PieChart as PieIcon, Calendar } = lucide;
 
-    <main class="max-w-7xl mx-auto space-y-8">
-        
-        <!-- Net Worth Summary -->
-        <section class="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div class="card p-6 rounded-xl">
-                <div class="text-slate-400 text-sm mb-1">Total Net Worth</div>
-                <div class="text-2xl font-bold" id="nw-total">$0.00</div>
-                <div class="text-xs text-green-400 mt-1" id="nw-change">+0.00%</div>
-            </div>
-            <div class="card p-6 rounded-xl">
-                <div class="text-slate-400 text-sm mb-1">Liquid Cash</div>
-                <div class="text-2xl font-bold" id="nw-liquid">$0.00</div>
-            </div>
-            <div class="card p-6 rounded-xl">
-                <div class="text-slate-400 text-sm mb-1">Investments</div>
-                <div class="text-2xl font-bold" id="nw-invest">$0.00</div>
-            </div>
-            <div class="card p-6 rounded-xl">
-                <div class="text-slate-400 text-sm mb-1">Total Debt</div>
-                <div class="text-2xl font-bold negative" id="nw-debt">$0.00</div>
-            </div>
-        </section>
-
-        <!-- Main Content Grid -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        // --- MOCK DATA GENERATOR ---
+        const generateMockData = () => {
+            const today = new Date();
+            const get_date = (offset) => new Date(today.getFullYear(), today.getMonth(), today.getDate() + offset).toISOString().split('T')[0];
             
-            <!-- Left Column: Accounts -->
-            <div class="lg:col-span-2 space-y-8">
-                
-                <!-- Hey Sparty Section (ESPP) -->
-                <section class="card rounded-xl overflow-hidden border-blue-900/50">
-                    <div class="bg-blue-900/20 p-6 border-b border-blue-900/50 flex justify-between items-center">
-                        <div>
-                            <h2 class="text-xl font-bold text-blue-400 flex items-center gap-2">
-                                <i data-lucide="rocket" class="w-5 h-5"></i> Hey Sparty (ESPP)
-                            </h2>
-                            <p class="text-xs text-blue-300/70">PLOC Leveraged ESPP Tracker</p>
-                        </div>
-                        <div class="text-right">
-                            <div class="text-xs text-blue-300">Net Profit (After Interest)</div>
-                            <div class="text-2xl font-bold positive" id="espp-profit">$0.00</div>
-                        </div>
-                    </div>
-                    
-                    <div class="p-6 grid grid-cols-2 md:grid-cols-4 gap-4 bg-slate-900/50">
-                        <div>
-                            <div class="text-xs text-slate-400">Active Loans</div>
-                            <div class="font-mono" id="espp-loans-count">0</div>
-                        </div>
-                        <div>
-                            <div class="text-xs text-slate-400">Total Interest Paid</div>
-                            <div class="font-mono negative" id="espp-interest">$0.00</div>
-                        </div>
-                        <div>
-                            <div class="text-xs text-slate-400">Shares Bought</div>
-                            <div class="font-mono" id="espp-shares">0</div>
-                        </div>
-                        <div>
-                            <div class="text-xs text-slate-400">ROI</div>
-                            <div class="font-mono positive" id="espp-roi">0%</div>
-                        </div>
-                    </div>
-
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-sm text-left">
-                            <thead class="text-xs text-slate-400 uppercase bg-slate-800/50">
-                                <tr>
-                                    <th class="px-6 py-3">Date</th>
-                                    <th class="px-6 py-3">Amount</th>
-                                    <th class="px-6 py-3">Interest</th>
-                                    <th class="px-6 py-3">Shares</th>
-                                    <th class="px-6 py-3">Profit</th>
-                                    <th class="px-6 py-3">Status</th>
-                                </tr>
-                            </thead>
-                            <tbody id="espp-table-body" class="divide-y divide-slate-800">
-                                <!-- Rows injected via JS -->
-                            </tbody>
-                        </table>
-                    </div>
-                </section>
-
-                <!-- Accounts List -->
-                <section>
-                    <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
-                        <i data-lucide="wallet" class="w-5 h-5 text-slate-400"></i> Accounts
-                    </h2>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="accounts-grid">
-                        <!-- Account Cards Injected Here -->
-                    </div>
-                </section>
-            </div>
-
-            <!-- Right Column: Charts & History -->
-            <div class="space-y-8">
-                <!-- Asset Allocation -->
-                <section class="card p-6 rounded-xl">
-                    <h2 class="text-lg font-bold mb-4">Asset Allocation</h2>
-                    <div class="relative h-64 w-full">
-                        <canvas id="allocationChart"></canvas>
-                    </div>
-                </section>
-
-                <!-- Investment History -->
-                <section class="card p-6 rounded-xl">
-                    <h2 class="text-lg font-bold mb-4">Recent Activity</h2>
-                    <div class="space-y-4" id="activity-list">
-                        <!-- Activity Items -->
-                    </div>
-                </section>
-            </div>
-        </div>
-    </main>
-
-    <script>
-        // --- MOCK DATA (Simulating Google Sheets Response) ---
-        const MOCK_DATA = {
-            accounts: [
-                { name: "Chase Checking", type: "Bank", balance: 12450.00, currency: "USD" },
-                { name: "Ally Savings", type: "Bank", balance: 45000.00, currency: "USD" },
-                { name: "Amex Platinum", type: "Credit Card", balance: -3200.50, currency: "USD" },
-                { name: "PLOC (Sparty Fund)", type: "Loan", balance: -15000.00, currency: "USD" },
-                { name: "Fidelity Brokerage", type: "Investment", balance: 125000.00, currency: "USD" },
-                { name: "401k", type: "Investment", balance: 85000.00, currency: "USD" }
-            ],
-            esppLoans: [
-                { date: "2023-10-01", amount: 5000, interest: 45.00, shares: 42, profit: 1200.00, status: "Paid Off" },
-                { date: "2024-01-01", amount: 5000, interest: 48.00, shares: 38, profit: 950.00, status: "Paid Off" },
-                { date: "2024-04-01", amount: 6000, interest: 55.00, shares: 45, profit: 1400.00, status: "Active" },
-                { date: "2024-07-01", amount: 6000, interest: 52.00, shares: 0, profit: 0, status: "Pending Purchase" }
-            ],
-            activity: [
-                { date: "Today", desc: "ESPP Purchase Executed", amount: "+$1,400", type: "gain" },
-                { date: "Yesterday", desc: "PLOC Interest Charge", amount: "-$52.00", type: "loss" },
-                { date: "Oct 15", desc: "Dividend Reinvestment", amount: "+$124.50", type: "gain" }
-            ]
+            return {
+                accounts: [
+                    { id: 1, name: "Chase Checking", type: "checking", balance: 4500.50, owner: "Victor", institution: "Chase" },
+                    { id: 2, name: "Ally Savings", type: "savings", balance: 25000.00, owner: "Wife", institution: "Ally" },
+                    { id: 3, name: "Fidelity Brokerage", type: "investment", balance: 145000.00, owner: "Joint", institution: "Fidelity" },
+                    { id: 4, name: "Amex Gold", type: "credit", balance: -1250.00, owner: "Victor", institution: "Amex", limit: 15000 },
+                    { id: 5, name: "Discover It", type: "credit", balance: -450.00, owner: "Wife", institution: "Discover", limit: 10000 },
+                    { id: 6, name: "Mortgage", type: "loan", balance: -320000.00, owner: "Joint", institution: "Bank of America" },
+                    { id: 7, name: "Tesla Loan", type: "loan", balance: -18000.00, owner: "Victor", institution: "Tesla Finance" }
+                ],
+                bills: [
+                    { id: 1, name: "Mortgage", amount: 2400, dueDay: 1, category: "Housing", paid: false },
+                    { id: 2, name: "Electric", amount: 150, dueDay: 15, category: "Utilities", paid: true },
+                    { id: 3, name: "Internet", amount: 80, dueDay: 20, category: "Utilities", paid: false },
+                    { id: 4, name: "Car Insurance", amount: 120, dueDay: 5, category: "Insurance", paid: false }
+                ],
+                esppOfferings: [
+                    { id: 1, company: "TechCorp Inc", ticker: "TCORP", discount: 15, lookback: true, startDate: get_date(-90), endDate: get_date(0), purchaseDate: get_date(5), maxContrib: 10000, currentContrib: 4500, status: "Active" },
+                    { id: 2, company: "GlobalSoft", ticker: "GLOB", discount: 10, lookback: false, startDate: get_date(-90), endDate: get_date(0), purchaseDate: get_date(5), maxContrib: 5000, currentContrib: 5000, status: "Full" }
+                ],
+                esppLoans: [
+                    { id: 1, offeringId: 1, pullDate: get_date(-80), amount: 2000, interestRate: 6.5, interestCharge: 32.50, sharesBought: 45, purchasePrice: 44.44, salePrice: 52.00, netProfit: 292.50, status: "Sold" },
+                    { id: 2, offeringId: 1, pullDate: get_date(-40), amount: 2500, interestRate: 6.5, interestCharge: 28.00, sharesBought: 0, purchasePrice: 0, salePrice: 0, netProfit: 0, status: "Pending Purchase" }
+                ],
+                transactions: [
+                    { date: get_date(-30), income: 5000, expense: 3200 },
+                    { date: get_date(-60), income: 5000, expense: 2800 },
+                    { date: get_date(-90), income: 5000, expense: 3500 },
+                    { date: get_date(-120), income: 5000, expense: 2900 }
+                ]
+            };
         };
 
-        // --- APP LOGIC ---
+        // --- COMPONENTS ---
 
-        function formatCurrency(num) {
-            return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num);
-        }
+        const Card = ({ title, value, subtext, icon: Icon, color = "blue" }) => (
+            <div className="card flex items-center justify-between">
+                <div>
+                    <p className="text-gray-500 text-sm font-medium">{title}</p>
+                    <h3 className="text-2xl font-bold text-gray-800 mt-1">{value}</h3>
+                    {subtext && <p className={`text-xs mt-1 ${color === 'red' ? 'text-red-500' : 'text-green-500'}`}>{subtext}</p>}
+                </div>
+                <div className={`p-3 rounded-full bg-${color}-100 text-${color}-600`}>
+                    <Icon size={24} />
+                </div>
+            </div>
+        );
 
-        function renderDashboard(data) {
-            // 1. Calculate Totals
-            let totalNetWorth = 0;
-            let liquidCash = 0;
-            let investments = 0;
-            let totalDebt = 0;
+        const AccountRow = ({ account, onDelete }) => {
+            const isNegative = account.balance < 0;
+            return (
+                <tr className="border-b hover:bg-gray-50">
+                    <td className="py-3 px-4">{account.name}</td>
+                    <td className="py-3 px-4"><span className="px-2 py-1 bg-gray-100 rounded text-xs uppercase">{account.type}</span></td>
+                    <td className="py-3 px-4">{account.owner}</td>
+                    <td className={`py-3 px-4 font-mono font-bold ${isNegative ? 'text-red-600' : 'text-green-600'}`}>
+                        ${Math.abs(account.balance).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                    </td>
+                    <td className="py-3 px-4 text-right">
+                        <button onClick={() => onDelete(account.id)} className="text-red-400 hover:text-red-600"><Trash2 size={16}/></button>
+                    </td>
+                </tr>
+            );
+        };
 
-            const accountsGrid = document.getElementById('accounts-grid');
-            accountsGrid.innerHTML = '';
+        const HeySparty = ({ offerings, loans, onAddLoan }) => {
+            const totalPulled = loans.reduce((sum, l) => sum + l.amount, 0);
+            const totalInterest = loans.reduce((sum, l) => sum + l.interestCharge, 0);
+            const totalProfit = loans.reduce((sum, l) => sum + l.netProfit, 0);
+            const activeLoans = loans.filter(l => l.status !== 'Paid Off').length;
 
-            data.accounts.forEach(acc => {
-                totalNetWorth += acc.balance;
-                if (acc.type === 'Bank') liquidCash += acc.balance;
-                if (acc.type === 'Investment') investments += acc.balance;
-                if (acc.balance < 0) totalDebt += Math.abs(acc.balance);
+            return (
+                <div className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <Card title="Total PLOC Pulled" value={`$${totalPulled.toLocaleString()}`} subtext="Across all quarters" icon={DollarSign} color="indigo" />
+                        <Card title="Interest Cost" value={`$${totalInterest.toLocaleString()}`} subtext="Total fees paid" icon={Activity} color="red" />
+                        <Card title="Net Profit" value={`$${totalProfit.toLocaleString()}`} subtext="After fees & interest" icon={TrendingUp} color="green" />
+                        <Card title="Active Loans" value={activeLoans} subtext="Awaiting sale/payoff" icon={CreditCard} color="orange" />
+                    </div>
 
-                // Render Account Card
-                const isNegative = acc.balance < 0;
-                const card = `
-                    <div class="card p-4 rounded-lg flex justify-between items-center hover:bg-slate-800/50 transition">
-                        <div>
-                            <div class="text-sm text-slate-400">${acc.type}</div>
-                            <div class="font-bold">${acc.name}</div>
-                        </div>
-                        <div class="text-right ${isNegative ? 'negative' : 'text-white'}">
-                            <div class="font-mono text-lg">${formatCurrency(acc.balance)}</div>
+                    <div className="card">
+                        <h3 className="text-lg font-bold mb-4 text-indigo-900">Current Offerings</h3>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left">
+                                <thead>
+                                    <tr className="text-gray-500 border-b">
+                                        <th className="py-2">Company</th>
+                                        <th className="py-2">Ticker</th>
+                                        <th className="py-2">Discount</th>
+                                        <th className="py-2">Lookback</th>
+                                        <th className="py-2">Purchase Date</th>
+                                        <th className="py-2">Contributed</th>
+                                        <th className="py-2">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {offerings.map(o => (
+                                        <tr key={o.id} className="border-b last:border-0">
+                                            <td className="py-3 font-medium">{o.company}</td>
+                                            <td className="py-3 text-blue-600 font-bold">{o.ticker}</td>
+                                            <td className="py-3">{o.discount}%</td>
+                                            <td className="py-3">{o.lookback ? 'Yes' : 'No'}</td>
+                                            <td className="py-3">{o.purchaseDate}</td>
+                                            <td className="py-3">${o.currentContrib.toLocaleString()}</td>
+                                            <td className="py-3"><span className={`px-2 py-1 rounded text-xs ${o.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>{o.status}</span></td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
                         </div>
                     </div>
-                `;
-                accountsGrid.innerHTML += card;
-            });
 
-            // Update Summary Cards
-            document.getElementById('nw-total').innerText = formatCurrency(totalNetWorth);
-            document.getElementById('nw-liquid').innerText = formatCurrency(liquidCash);
-            document.getElementById('nw-invest').innerText = formatCurrency(investments);
-            document.getElementById('nw-debt').innerText = formatCurrency(totalDebt);
-
-            // 2. Render ESPP Section
-            let totalProfit = 0;
-            let totalInterest = 0;
-            let totalShares = 0;
-            let activeLoans = 0;
-            const tbody = document.getElementById('espp-table-body');
-            tbody.innerHTML = '';
-
-            data.esppLoans.forEach(loan => {
-                totalProfit += loan.profit;
-                totalInterest += loan.interest;
-                totalShares += loan.shares;
-                if(loan.status === 'Active' || loan.status === 'Pending Purchase') activeLoans++;
-
-                const row = `
-                    <tr class="hover:bg-slate-800/30">
-                        <td class="px-6 py-4">${loan.date}</td>
-                        <td class="px-6 py-4 font-mono">${formatCurrency(loan.amount)}</td>
-                        <td class="px-6 py-4 negative font-mono">-${formatCurrency(loan.interest)}</td>
-                        <td class="px-6 py-4 font-mono">${loan.shares}</td>
-                        <td class="px-6 py-4 positive font-mono">+${formatCurrency(loan.profit)}</td>
-                        <td class="px-6 py-4">
-                            <span class="px-2 py-1 rounded text-xs ${loan.status === 'Paid Off' ? 'bg-green-900 text-green-300' : 'bg-blue-900 text-blue-300'}">
-                                ${loan.status}
-                            </span>
-                        </td>
-                    </tr>
-                `;
-                tbody.innerHTML += row;
-            });
-
-            document.getElementById('espp-profit').innerText = formatCurrency(totalProfit);
-            document.getElementById('espp-interest').innerText = formatCurrency(totalInterest);
-            document.getElementById('espp-shares').innerText = totalShares;
-            document.getElementById('espp-loans-count').innerText = activeLoans;
-            
-            const totalInvested = data.esppLoans.reduce((sum, l) => sum + l.amount, 0);
-            const roi = totalInvested > 0 ? ((totalProfit / totalInvested) * 100).toFixed(2) : 0;
-            document.getElementById('espp-roi').innerText = `${roi}%`;
-
-            // 3. Render Activity
-            const actList = document.getElementById('activity-list');
-            actList.innerHTML = '';
-            data.activity.forEach(act => {
-                actList.innerHTML += `
-                    <div class="flex justify-between items-center text-sm border-b border-slate-800 pb-2 last:border-0">
-                        <div>
-                            <div class="font-bold text-slate-300">${act.desc}</div>
-                            <div class="text-xs text-slate-500">${act.date}</div>
+                    <div className="card">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-lg font-bold text-indigo-900">Loan History ("Hey Sparty")</h3>
+                            <button onClick={onAddLoan} className="btn btn-primary text-sm flex items-center gap-2"><Plus size={16}/> Log New Pull</button>
                         </div>
-                        <div class="${act.type === 'gain' ? 'positive' : 'negative'} font-mono">${act.amount}</div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left text-sm">
+                                <thead>
+                                    <tr className="text-gray-500 border-b bg-gray-50">
+                                        <th className="py-2 px-2">Pull Date</th>
+                                        <th className="py-2 px-2">Amount</th>
+                                        <th className="py-2 px-2">Int. Rate</th>
+                                        <th className="py-2 px-2">Interest Cost</th>
+                                        <th className="py-2 px-2">Shares</th>
+                                        <th className="py-2 px-2">Buy Price</th>
+                                        <th className="py-2 px-2">Sale Price</th>
+                                        <th className="py-2 px-2">Net Profit</th>
+                                        <th className="py-2 px-2">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {loans.map(l => (
+                                        <tr key={l.id} className="border-b last:border-0 hover:bg-gray-50">
+                                            <td className="py-2 px-2">{l.pullDate}</td>
+                                            <td className="py-2 px-2 font-mono">${l.amount.toLocaleString()}</td>
+                                            <td className="py-2 px-2">{l.interestRate}%</td>
+                                            <td className="py-2 px-2 text-red-500">-${l.interestCharge.toFixed(2)}</td>
+                                            <td className="py-2 px-2">{l.sharesBought || '-'}</td>
+                                            <td className="py-2 px-2">{l.purchasePrice ? `$${l.purchasePrice.toFixed(2)}` : '-'}</td>
+                                            <td className="py-2 px-2">{l.salePrice ? `$${l.salePrice.toFixed(2)}` : '-'}</td>
+                                            <td className={`py-2 px-2 font-bold ${l.netProfit > 0 ? 'text-green-600' : 'text-gray-400'}`}>
+                                                {l.netProfit > 0 ? '+' : ''}{l.netProfit.toFixed(2)}
+                                            </td>
+                                            <td className="py-2 px-2">
+                                                <span className={`px-2 py-1 rounded text-xs ${l.status === 'Sold' ? 'bg-green-100 text-green-700' : l.status === 'Pending Purchase' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'}`}>
+                                                    {l.status}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
-                `;
-            });
+                </div>
+            );
+        };
 
-            // 4. Render Chart
-            renderChart(data.accounts);
-            
-            // Re-initialize Lucide icons
-            lucide.createIcons();
-        }
+        const App = () => {
+            const [view, setView] = useState('dashboard');
+            const [data, setData] = useState(null);
+            const [apiUrl, setApiUrl] = useState(localStorage.getItem('tdex_api_url') || '');
+            const [useMock, setUseMock] = useState(!apiUrl);
+            const [showModal, setShowModal] = useState(false);
+            const [modalType, setModalType] = useState('');
 
-        let chartInstance = null;
-        function renderChart(accounts) {
-            const ctx = document.getElementById('allocationChart').getContext('2d');
-            
-            // Group by type
-            const groups = {};
-            accounts.forEach(acc => {
-                if(acc.balance > 0) {
-                    groups[acc.type] = (groups[acc.type] || 0) + acc.balance;
-                }
-            });
-
-            const labels = Object.keys(groups);
-            const data = Object.values(groups);
-            const colors = ['#38bdf8', '#818cf8', '#4ade80', '#fbbf24'];
-
-            if(chartInstance) chartInstance.destroy();
-
-            chartInstance = new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        data: data,
-                        backgroundColor: colors,
-                        borderWidth: 0
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { position: 'bottom', labels: { color: '#94a3b8' } }
+            // Load Data
+            useEffect(() => {
+                const loadData = async () => {
+                    if (useMock) {
+                        setData(generateMockData());
+                    } else if (apiUrl) {
+                        try {
+                            // In a real scenario, we would fetch from Google Apps Script
+                            // For now, fallback to mock if fetch fails to prevent crash
+                            const response = await fetch(`${apiUrl}?action=getAllData`);
+                            if(response.ok) {
+                                const json = await response.json();
+                                setData(json);
+                            } else {
+                                setUseMock(true); // Fallback
+                                setData(generateMockData());
+                            }
+                        } catch (e) {
+                            setUseMock(true);
+                            setData(generateMockData());
+                        }
                     }
-                }
-            });
-        }
+                };
+                loadData();
+            }, [useMock, apiUrl]);
 
-        function loadData() {
-            // In a real app, this would fetch from Google Apps Script
-            // fetch('YOUR_APPS_SCRIPT_URL')...
-            console.log("Loading data...");
-            renderDashboard(MOCK_DATA);
-        }
+            if (!data) return <div className="flex h-screen items-center justify-center">Loading Dashboard...</div>;
 
-        // Initialize
-        window.addEventListener('DOMContentLoaded', () => {
-            loadData();
-        });
+            const netWorth = data.accounts.reduce((acc, curr) => acc + curr.balance, 0);
+            const liquidCash = data.accounts.filter(a => ['checking', 'savings'].includes(a.type)).reduce((acc, curr) => acc + curr.balance, 0);
+            const totalDebt = Math.abs(data.accounts.filter(a => a.balance < 0).reduce((acc, curr) => acc + curr.balance, 0));
 
+            const handleSaveSettings = () => {
+                localStorage.setItem('tdex_api_url', apiUrl);
+                setUseMock(!apiUrl);
+                setShowModal(false);
+                alert("Settings saved! Refreshing data...");
+                window.location.reload();
+            };
+
+            const openModal = (type) => {
+                setModalType(type);
+                setShowModal(true);
+            };
+
+            return (
+                <div className="flex min-h-screen">
+                    {/* Sidebar */}
+                    <aside className="w-64 bg-white border-r hidden md:block fixed h-full">
+                        <div className="p-6 border-b">
+                            <h1 className="text-2xl font-bold text-blue-600">TDEX</h1>
+                            <p className="text-xs text-gray-500">Family Finance OS</p>
+                        </div>
+                        <nav className="p-4 space-y-2">
+                            <div onClick={() => setView('dashboard')} className={`nav-item ${view === 'dashboard' ? 'active' : ''}`}><Wallet size={20}/> Dashboard</div>
+                            <div onClick={() => setView('accounts')} className={`nav-item ${view === 'accounts' ? 'active' : ''}`}><DollarSign size={20}/> Accounts</div>
+                            <div onClick={() => setView('bills')} className={`nav-item ${view === 'bills' ? 'active' : ''}`}><Calendar size={20}/> Bills & Budget</div>
+                            <div onClick={() => setView('espp')} className={`nav-item ${view === 'espp' ? 'active' : ''}`}><TrendingUp size={20}/> Hey Sparty (ESPP)</div>
+                            <div onClick={() => setView('reports')} className={`nav-item ${view === 'reports' ? 'active' : ''}`}><PieIcon size={20}/> Reports</div>
+                            <div onClick={() => openModal('settings')} className={`nav-item ${view === 'settings' ? 'active' : ''}`}><Settings size={20}/> Settings / DB</div>
+                        </nav>
+                    </aside>
+
+                    {/* Main Content */}
+                    <main className="flex-1 md:ml-64 p-8 overflow-y-auto">
+                        <header className="flex justify-between items-center mb-8">
+                            <h2 className="text-3xl font-bold text-gray-800 capitalize">{view.replace('-', ' ')}</h2>
+                            <div className="flex items-center gap-4">
+                                <span className="text-sm text-gray-500">{useMock ? '🟡 Mock Data Mode' : '🟢 Live Data Mode'}</span>
+                                <button onClick={() => openModal('settings')} className="p-2 bg-white rounded-full shadow hover:bg-gray-100"><Settings size={20}/></button>
+                            </div>
+                        </header>
+
+                        {view === 'dashboard' && (
+                            <div className="space-y-6">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <Card title="Net Worth" value={`$${netWorth.toLocaleString(undefined, {maximumFractionDigits: 0})}`} subtext="+2.4% this month" icon={TrendingUp} color="green" />
+                                    <Card title="Liquid Cash" value={`$${liquidCash.toLocaleString()}`} subtext="Checking + Savings" icon={Wallet} color="blue" />
+                                    <Card title="Total Debt" value={`$${totalDebt.toLocaleString()}`} subtext="Loans + Credit Cards" icon={CreditCard} color="red" />
+                                </div>
+                                
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                    <div className="card">
+                                        <h3 className="font-bold mb-4">Cash Flow Trend</h3>
+                                        <ResponsiveContainer width="100%" height={300}>
+                                            <BarChart data={data.transactions}>
+                                                <CartesianGrid strokeDasharray="3 3" />
+                                                <XAxis dataKey="date" />
+                                                <YAxis />
+                                                <Tooltip />
+                                                <Legend />
+                                                <Bar dataKey="income" fill="#16a34a" name="Income" />
+                                                <Bar dataKey="expense" fill="#dc2626" name="Expense" />
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                    <div className="card">
+                                        <h3 className="font-bold mb-4">Asset Allocation</h3>
+                                        <ResponsiveContainer width="100%" height={300}>
+                                            <PieChart>
+                                                <Pie data={data.accounts.filter(a => a.balance > 0).map(a => ({name: a.name, value: a.balance}))} innerRadius={60} outerRadius={80} fill="#8884d8" dataKey="value" label />
+                                                <Tooltip />
+                                            </PieChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {view === 'accounts' && (
+                            <div className="card">
+                                <div className="flex justify-between mb-4">
+                                    <h3 className="font-bold text-lg">All Accounts</h3>
+                                    <button onClick={() => openModal('account')} className="btn btn-primary flex items-center gap-2"><Plus size={16}/> Add Account</button>
+                                </div>
+                                <table className="w-full text-left">
+                                    <thead>
+                                        <tr className="border-b text-gray-500">
+                                            <th className="py-2">Name</th>
+                                            <th className="py-2">Type</th>
+                                            <th className="py-2">Owner</th>
+                                            <th className="py-2">Balance</th>
+                                            <th className="py-2 text-right">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {data.accounts.map(acc => <AccountRow key={acc.id} account={acc} onDelete={(id) => {}} />)}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+
+                        {view === 'espp' && (
+                            <HeySparty 
+                                offerings={data.esppOfferings} 
+                                loans={data.esppLoans} 
+                                onAddLoan={() => openModal('loan')}
+                            />
+                        )}
+
+                        {view === 'bills' && (
+                            <div className="card">
+                                <h3 className="font-bold text-lg mb-4">Upcoming Bills</h3>
+                                <div className="space-y-3">
+                                    {data.bills.map(bill => (
+                                        <div key={bill.id} className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
+                                            <div>
+                                                <p className="font-bold">{bill.name}</p>
+                                                <p className="text-sm text-gray-500">Due: Day {bill.dueDay} • {bill.category}</p>
+                                            </div>
+                                            <div className="flex items-center gap-4">
+                                                <span className="font-mono font-bold">${bill.amount}</span>
+                                                <button className={`px-3 py-1 rounded text-sm ${bill.paid ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                                                    {bill.paid ? 'Paid' : 'Unpaid'}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {view === 'reports' && (
+                            <div className="card">
+                                <h3 className="font-bold text-lg mb-4">Monthly Expense Report</h3>
+                                <p className="text-gray-500 mb-4">Detailed breakdown of family spending.</p>
+                                <div className="h-64 flex items-center justify-center bg-gray-50 rounded border border-dashed">
+                                    Chart Component Placeholder (Connect Data to Enable)
+                                </div>
+                            </div>
+                        )}
+                    </main>
+
+                    {/* Modals */}
+                    {showModal && (
+                        <div className="modal-overlay" onClick={() => setShowModal(false)}>
+                            <div className="modal-content" onClick={e => e.stopPropagation()}>
+                                <h3 className="text-xl font-bold mb-4 capitalize">{modalType} Settings</h3>
+                                
+                                {modalType === 'settings' && (
+                                    <div className="space-y-4">
+                                        <p className="text-sm text-gray-600">Enter your Google Apps Script Web App URL to enable live data. Leave blank for Mock Data.</p>
+                                        <input 
+                                            type="text" 
+                                            value={apiUrl} 
+                                            onChange={(e) => setApiUrl(e.target.value)}
+                                            placeholder="https://script.google.com/macros/s/..."
+                                            className="input-field font-mono text-sm"
+                                        />
+                                        <div className="flex justify-end gap-2 mt-4">
+                                            <button onClick={() => setShowModal(false)} className="btn bg-gray-200">Cancel</button>
+                                            <button onClick={handleSaveSettings} className="btn btn-primary">Save Configuration</button>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {modalType === 'loan' && (
+                                    <div className="space-y-4">
+                                        <p className="text-sm text-gray-500">Log a new PLOC pull for ESPP.</p>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div><label className="text-xs font-bold">Amount Pulled</label><input type="number" className="input-field" /></div>
+                                            <div><label className="text-xs font-bold">Interest Rate (%)</label><input type="number" className="input-field" /></div>
+                                            <div><label className="text-xs font-bold">Pull Date</label><input type="date" className="input-field" /></div>
+                                            <div><label className="text-xs font-bold">Status</label><select className="input-field"><option>Pending Purchase</option><option>Purchased</option></select></div>
+                                        </div>
+                                        <div className="flex justify-end gap-2 mt-4">
+                                            <button onClick={() => setShowModal(false)} className="btn bg-gray-200">Cancel</button>
+                                            <button onClick={() => { alert("Mock Save: Data added!"); setShowModal(false); }} className="btn btn-primary">Save Loan</button>
+                                        </div>
+                                    </div>
+                                )}
+                                
+                                {modalType === 'account' && (
+                                    <div className="space-y-4">
+                                        <p className="text-sm text-gray-500">Add a new financial account.</p>
+                                        <input type="text" placeholder="Account Name" className="input-field" />
+                                        <select className="input-field"><option>Checking</option><option>Savings</option><option>Investment</option><option>Credit Card</option><option>Loan</option></select>
+                                        <input type="number" placeholder="Current Balance" className="input-field" />
+                                        <div className="flex justify-end gap-2 mt-4">
+                                            <button onClick={() => setShowModal(false)} className="btn bg-gray-200">Cancel</button>
+                                            <button onClick={() => { alert("Mock Save: Account added!"); setShowModal(false); }} className="btn btn-primary">Save Account</button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
     </script>
 </body>
 </html>
