@@ -3,307 +3,326 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TDEX | Financial Dashboard</title>
+    <title>TDEX - Financial Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/recharts@2.10.3/umd/Recharts.min.js"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { background-color: #0f172a; color: #e2e8f0; font-family: 'Inter', sans-serif; }
         .card { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
-        .glass-panel { background: linear-gradient(145deg, rgba(30,41,59,0.9), rgba(15,23,42,0.95)); border: 1px solid rgba(255,255,255,0.05); }
+        .glass-panel { background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255,255,255,0.05); }
         .text-gradient { background: linear-gradient(to right, #38bdf8, #818cf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .positive { color: #4ade80; }
+        .negative { color: #f87171; }
     </style>
 </head>
-<body>
-    <div id="root"></div>
+<body class="min-h-screen p-4 md:p-8">
 
-    <script type="text/babel">
-        const { useState, useEffect } = React;
-        const { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, Legend } = Recharts;
+    <!-- Header -->
+    <header class="max-w-7xl mx-auto mb-8 flex justify-between items-center">
+        <div>
+            <h1 class="text-3xl font-bold text-gradient">TDEX Dashboard</h1>
+            <p class="text-slate-400 text-sm">Real-time Net Worth & ESPP Tracker</p>
+        </div>
+        <button onclick="loadData()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition">
+            <i data-lucide="refresh-cw" class="w-4 h-4"></i> Refresh Data
+        </button>
+    </header>
 
-        // --- MOCK DATA (Replace with Google Sheets Fetch later) ---
+    <main class="max-w-7xl mx-auto space-y-8">
+        
+        <!-- Net Worth Summary -->
+        <section class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="card p-6 rounded-xl">
+                <div class="text-slate-400 text-sm mb-1">Total Net Worth</div>
+                <div class="text-2xl font-bold" id="nw-total">$0.00</div>
+                <div class="text-xs text-green-400 mt-1" id="nw-change">+0.00%</div>
+            </div>
+            <div class="card p-6 rounded-xl">
+                <div class="text-slate-400 text-sm mb-1">Liquid Cash</div>
+                <div class="text-2xl font-bold" id="nw-liquid">$0.00</div>
+            </div>
+            <div class="card p-6 rounded-xl">
+                <div class="text-slate-400 text-sm mb-1">Investments</div>
+                <div class="text-2xl font-bold" id="nw-invest">$0.00</div>
+            </div>
+            <div class="card p-6 rounded-xl">
+                <div class="text-slate-400 text-sm mb-1">Total Debt</div>
+                <div class="text-2xl font-bold negative" id="nw-debt">$0.00</div>
+            </div>
+        </section>
+
+        <!-- Main Content Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            <!-- Left Column: Accounts -->
+            <div class="lg:col-span-2 space-y-8">
+                
+                <!-- Hey Sparty Section (ESPP) -->
+                <section class="card rounded-xl overflow-hidden border-blue-900/50">
+                    <div class="bg-blue-900/20 p-6 border-b border-blue-900/50 flex justify-between items-center">
+                        <div>
+                            <h2 class="text-xl font-bold text-blue-400 flex items-center gap-2">
+                                <i data-lucide="rocket" class="w-5 h-5"></i> Hey Sparty (ESPP)
+                            </h2>
+                            <p class="text-xs text-blue-300/70">PLOC Leveraged ESPP Tracker</p>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-xs text-blue-300">Net Profit (After Interest)</div>
+                            <div class="text-2xl font-bold positive" id="espp-profit">$0.00</div>
+                        </div>
+                    </div>
+                    
+                    <div class="p-6 grid grid-cols-2 md:grid-cols-4 gap-4 bg-slate-900/50">
+                        <div>
+                            <div class="text-xs text-slate-400">Active Loans</div>
+                            <div class="font-mono" id="espp-loans-count">0</div>
+                        </div>
+                        <div>
+                            <div class="text-xs text-slate-400">Total Interest Paid</div>
+                            <div class="font-mono negative" id="espp-interest">$0.00</div>
+                        </div>
+                        <div>
+                            <div class="text-xs text-slate-400">Shares Bought</div>
+                            <div class="font-mono" id="espp-shares">0</div>
+                        </div>
+                        <div>
+                            <div class="text-xs text-slate-400">ROI</div>
+                            <div class="font-mono positive" id="espp-roi">0%</div>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm text-left">
+                            <thead class="text-xs text-slate-400 uppercase bg-slate-800/50">
+                                <tr>
+                                    <th class="px-6 py-3">Date</th>
+                                    <th class="px-6 py-3">Amount</th>
+                                    <th class="px-6 py-3">Interest</th>
+                                    <th class="px-6 py-3">Shares</th>
+                                    <th class="px-6 py-3">Profit</th>
+                                    <th class="px-6 py-3">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="espp-table-body" class="divide-y divide-slate-800">
+                                <!-- Rows injected via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- Accounts List -->
+                <section>
+                    <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
+                        <i data-lucide="wallet" class="w-5 h-5 text-slate-400"></i> Accounts
+                    </h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="accounts-grid">
+                        <!-- Account Cards Injected Here -->
+                    </div>
+                </section>
+            </div>
+
+            <!-- Right Column: Charts & History -->
+            <div class="space-y-8">
+                <!-- Asset Allocation -->
+                <section class="card p-6 rounded-xl">
+                    <h2 class="text-lg font-bold mb-4">Asset Allocation</h2>
+                    <div class="relative h-64 w-full">
+                        <canvas id="allocationChart"></canvas>
+                    </div>
+                </section>
+
+                <!-- Investment History -->
+                <section class="card p-6 rounded-xl">
+                    <h2 class="text-lg font-bold mb-4">Recent Activity</h2>
+                    <div class="space-y-4" id="activity-list">
+                        <!-- Activity Items -->
+                    </div>
+                </section>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // --- MOCK DATA (Simulating Google Sheets Response) ---
         const MOCK_DATA = {
             accounts: [
-                { id: 1, name: "Chase Checking", type: "bank", balance: 4500.50, institution: "Chase" },
-                { id: 2, name: "Ally Savings", type: "bank", balance: 12500.00, institution: "Ally" },
-                { id: 3, name: "Amex Gold", type: "credit", balance: -1250.40, institution: "Amex" },
-                { id: 4, name: "Discover It", type: "credit", balance: -450.00, institution: "Discover" },
-                { id: 5, name: "SoFi Personal Loan", type: "loan", balance: -8500.00, institution: "SoFi" },
-                { id: 6, name: "Fidelity 401k", type: "investment", balance: 45000.00, institution: "Fidelity" },
-                { id: 7, name: "Robinhood Brokerage", type: "investment", balance: 12300.50, institution: "Robinhood" }
-            ],
-            investments: [
-                { date: 'Jan', value: 50000 }, { date: 'Feb', value: 52000 },
-                { date: 'Mar', value: 51500 }, { date: 'Apr', value: 54000 },
-                { date: 'May', value: 56000 }, { date: 'Jun', value: 57300 }
-            ],
-            esppOfferings: [
-                { id: 1, company: "TechCorp Inc.", ticker: "TECH", discount: 15, lookback: true, startDate: "2023-10-01", endDate: "2023-12-31", purchaseDate: "2024-01-15", maxContrib: 25000, contributed: 18500, status: "Active" },
-                { id: 2, company: "Global Systems", ticker: "GLBL", discount: 10, lookback: false, startDate: "2023-07-01", endDate: "2023-09-30", purchaseDate: "2023-10-15", maxContrib: 20000, contributed: 20000, status: "Purchased" }
+                { name: "Chase Checking", type: "Bank", balance: 12450.00, currency: "USD" },
+                { name: "Ally Savings", type: "Bank", balance: 45000.00, currency: "USD" },
+                { name: "Amex Platinum", type: "Credit Card", balance: -3200.50, currency: "USD" },
+                { name: "PLOC (Sparty Fund)", type: "Loan", balance: -15000.00, currency: "USD" },
+                { name: "Fidelity Brokerage", type: "Investment", balance: 125000.00, currency: "USD" },
+                { name: "401k", type: "Investment", balance: 85000.00, currency: "USD" }
             ],
             esppLoans: [
-                { id: 1, offeringId: 2, pullDate: "2023-09-15", amount: 20000, interestRate: 6.5, interestCharge: 325, sharesBought: 450, purchasePrice: 44.44, salePrice: 52.00, soldDate: "2023-10-16", netProfit: 2905, status: "Paid Off" },
-                { id: 2, offeringId: 1, pullDate: "2023-12-15", amount: 18500, interestRate: 6.5, interestCharge: 300, sharesBought: 0, purchasePrice: 0, salePrice: 0, soldDate: null, netProfit: 0, status: "Pending Purchase" }
+                { date: "2023-10-01", amount: 5000, interest: 45.00, shares: 42, profit: 1200.00, status: "Paid Off" },
+                { date: "2024-01-01", amount: 5000, interest: 48.00, shares: 38, profit: 950.00, status: "Paid Off" },
+                { date: "2024-04-01", amount: 6000, interest: 55.00, shares: 45, profit: 1400.00, status: "Active" },
+                { date: "2024-07-01", amount: 6000, interest: 52.00, shares: 0, profit: 0, status: "Pending Purchase" }
+            ],
+            activity: [
+                { date: "Today", desc: "ESPP Purchase Executed", amount: "+$1,400", type: "gain" },
+                { date: "Yesterday", desc: "PLOC Interest Charge", amount: "-$52.00", type: "loss" },
+                { date: "Oct 15", desc: "Dividend Reinvestment", amount: "+$124.50", type: "gain" }
             ]
         };
 
-        // --- COMPONENTS ---
+        // --- APP LOGIC ---
 
-        const StatCard = ({ title, value, subtext, icon, color }) => (
-            <div className="card p-6 rounded-xl shadow-lg hover:shadow-blue-500/10 transition-all duration-300">
-                <div className="flex justify-between items-start">
-                    <div>
-                        <p className="text-slate-400 text-sm font-medium">{title}</p>
-                        <h3 className="text-2xl font-bold text-white mt-1">{value}</h3>
-                        {subtext && <p className={`text-xs mt-2 ${color === 'green' ? 'text-emerald-400' : color === 'red' ? 'text-rose-400' : 'text-slate-400'}`}>{subtext}</p>}
-                    </div>
-                    <div className={`p-3 rounded-lg bg-${color}-500/10 text-${color}-400`}>
-                        <i className={`fas ${icon} text-xl`}></i>
-                    </div>
-                </div>
-            </div>
-        );
+        function formatCurrency(num) {
+            return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num);
+        }
 
-        const AccountRow = ({ account }) => {
-            const isPositive = account.balance >= 0;
-            return (
-                <div className="flex justify-between items-center p-4 border-b border-slate-700/50 last:border-0 hover:bg-slate-800/50 transition-colors">
-                    <div className="flex items-center gap-4">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${account.type === 'bank' ? 'bg-blue-500/20 text-blue-400' : account.type === 'credit' ? 'bg-rose-500/20 text-rose-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
-                            <i className={`fas ${account.type === 'bank' ? 'fa-building-columns' : account.type === 'credit' ? 'fa-credit-card' : 'fa-chart-line'}`}></i>
-                        </div>
+        function renderDashboard(data) {
+            // 1. Calculate Totals
+            let totalNetWorth = 0;
+            let liquidCash = 0;
+            let investments = 0;
+            let totalDebt = 0;
+
+            const accountsGrid = document.getElementById('accounts-grid');
+            accountsGrid.innerHTML = '';
+
+            data.accounts.forEach(acc => {
+                totalNetWorth += acc.balance;
+                if (acc.type === 'Bank') liquidCash += acc.balance;
+                if (acc.type === 'Investment') investments += acc.balance;
+                if (acc.balance < 0) totalDebt += Math.abs(acc.balance);
+
+                // Render Account Card
+                const isNegative = acc.balance < 0;
+                const card = `
+                    <div class="card p-4 rounded-lg flex justify-between items-center hover:bg-slate-800/50 transition">
                         <div>
-                            <h4 className="font-semibold text-slate-200">{account.name}</h4>
-                            <p className="text-xs text-slate-500">{account.institution}</p>
+                            <div class="text-sm text-slate-400">${acc.type}</div>
+                            <div class="font-bold">${acc.name}</div>
+                        </div>
+                        <div class="text-right ${isNegative ? 'negative' : 'text-white'}">
+                            <div class="font-mono text-lg">${formatCurrency(acc.balance)}</div>
                         </div>
                     </div>
-                    <span className={`font-mono font-medium ${isPositive ? 'text-emerald-400' : 'text-rose-400'}`}>
-                        {isPositive ? '+' : ''}{account.balance.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
-                    </span>
-                </div>
-            );
-        };
+                `;
+                accountsGrid.innerHTML += card;
+            });
 
-        const HeySparty = () => {
-            const [offerings, setOfferings] = useState(MOCK_DATA.esppOfferings);
-            const [loans, setLoans] = useState(MOCK_DATA.esppLoans);
+            // Update Summary Cards
+            document.getElementById('nw-total').innerText = formatCurrency(totalNetWorth);
+            document.getElementById('nw-liquid').innerText = formatCurrency(liquidCash);
+            document.getElementById('nw-invest').innerText = formatCurrency(investments);
+            document.getElementById('nw-debt').innerText = formatCurrency(totalDebt);
 
-            const totalPulled = loans.reduce((acc, loan) => acc + loan.amount, 0);
-            const totalInterest = loans.reduce((acc, loan) => acc + loan.interestCharge, 0);
-            const totalProfit = loans.reduce((acc, loan) => acc + (loan.netProfit || 0), 0);
-            const activeLoans = loans.filter(l => l.status !== 'Paid Off').length;
+            // 2. Render ESPP Section
+            let totalProfit = 0;
+            let totalInterest = 0;
+            let totalShares = 0;
+            let activeLoans = 0;
+            const tbody = document.getElementById('espp-table-body');
+            tbody.innerHTML = '';
 
-            return (
-                <div className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <StatCard title="Total PLOC Pulled" value={`$${totalPulled.toLocaleString()}`} subtext="Across all quarters" icon="fa-hand-holding-dollar" color="blue" />
-                        <StatCard title="Total Interest Cost" value={`$${totalInterest.toLocaleString()}`} subtext="Cost of leverage" icon="fa-percent" color="rose" />
-                        <StatCard title="Net Profit (After Fees)" value={`$${totalProfit.toLocaleString()}`} subtext="Realized Gains" icon="fa-sack-dollar" color="emerald" />
-                        <StatCard title="Active Loans" value={activeLoans} subtext="Pending settlement" icon="fa-clock" color="amber" />
+            data.esppLoans.forEach(loan => {
+                totalProfit += loan.profit;
+                totalInterest += loan.interest;
+                totalShares += loan.shares;
+                if(loan.status === 'Active' || loan.status === 'Pending Purchase') activeLoans++;
+
+                const row = `
+                    <tr class="hover:bg-slate-800/30">
+                        <td class="px-6 py-4">${loan.date}</td>
+                        <td class="px-6 py-4 font-mono">${formatCurrency(loan.amount)}</td>
+                        <td class="px-6 py-4 negative font-mono">-${formatCurrency(loan.interest)}</td>
+                        <td class="px-6 py-4 font-mono">${loan.shares}</td>
+                        <td class="px-6 py-4 positive font-mono">+${formatCurrency(loan.profit)}</td>
+                        <td class="px-6 py-4">
+                            <span class="px-2 py-1 rounded text-xs ${loan.status === 'Paid Off' ? 'bg-green-900 text-green-300' : 'bg-blue-900 text-blue-300'}">
+                                ${loan.status}
+                            </span>
+                        </td>
+                    </tr>
+                `;
+                tbody.innerHTML += row;
+            });
+
+            document.getElementById('espp-profit').innerText = formatCurrency(totalProfit);
+            document.getElementById('espp-interest').innerText = formatCurrency(totalInterest);
+            document.getElementById('espp-shares').innerText = totalShares;
+            document.getElementById('espp-loans-count').innerText = activeLoans;
+            
+            const totalInvested = data.esppLoans.reduce((sum, l) => sum + l.amount, 0);
+            const roi = totalInvested > 0 ? ((totalProfit / totalInvested) * 100).toFixed(2) : 0;
+            document.getElementById('espp-roi').innerText = `${roi}%`;
+
+            // 3. Render Activity
+            const actList = document.getElementById('activity-list');
+            actList.innerHTML = '';
+            data.activity.forEach(act => {
+                actList.innerHTML += `
+                    <div class="flex justify-between items-center text-sm border-b border-slate-800 pb-2 last:border-0">
+                        <div>
+                            <div class="font-bold text-slate-300">${act.desc}</div>
+                            <div class="text-xs text-slate-500">${act.date}</div>
+                        </div>
+                        <div class="${act.type === 'gain' ? 'positive' : 'negative'} font-mono">${act.amount}</div>
                     </div>
+                `;
+            });
 
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        {/* Current Offerings */}
-                        <div className="card rounded-xl p-6">
-                            <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                                <i className="fas fa-briefcase text-blue-400"></i> Active Offerings
-                            </h3>
-                            <div className="space-y-4">
-                                {offerings.map(offering => (
-                                    <div key={offering.id} className="bg-slate-800/50 p-4 rounded-lg border border-slate-700">
-                                        <div className="flex justify-between mb-2">
-                                            <span className="font-bold text-white">{offering.company} ({offering.ticker})</span>
-                                            <span className={`px-2 py-1 rounded text-xs font-bold ${offering.status === 'Active' ? 'bg-blue-500/20 text-blue-400' : 'bg-emerald-500/20 text-emerald-400'}`}>{offering.status}</span>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-2 text-sm text-slate-400">
-                                            <div>Discount: <span className="text-white font-mono">{offering.discount}%</span></div>
-                                            <div>Lookback: <span className={offering.lookback ? "text-emerald-400" : "text-slate-500"}>{offering.lookback ? "Yes" : "No"}</span></div>
-                                            <div>Contributed: <span className="text-white font-mono">${offering.contributed.toLocaleString()}</span></div>
-                                            <div>Purchase Date: <span className="text-white">{offering.purchaseDate}</span></div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
+            // 4. Render Chart
+            renderChart(data.accounts);
+            
+            // Re-initialize Lucide icons
+            lucide.createIcons();
+        }
 
-                        {/* Loan History Table */}
-                        <div className="card rounded-xl p-6 overflow-hidden">
-                            <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                                <i className="fas fa-history text-amber-400"></i> Loan & Profit History
-                            </h3>
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-sm text-left">
-                                    <thead className="text-xs text-slate-400 uppercase bg-slate-800/50">
-                                        <tr>
-                                            <th className="px-4 py-3">Date</th>
-                                            <th className="px-4 py-3">Amount</th>
-                                            <th className="px-4 py-3">Interest</th>
-                                            <th className="px-4 py-3">Net Profit</th>
-                                            <th className="px-4 py-3">Status</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {loans.map(loan => (
-                                            <tr key={loan.id} className="border-b border-slate-700/50 hover:bg-slate-800/30">
-                                                <td className="px-4 py-3 text-slate-300">{loan.pullDate}</td>
-                                                <td className="px-4 py-3 font-mono text-white">${loan.amount.toLocaleString()}</td>
-                                                <td className="px-4 py-3 font-mono text-rose-400">-${loan.interestCharge}</td>
-                                                <td className={`px-4 py-3 font-mono font-bold ${loan.netProfit > 0 ? 'text-emerald-400' : 'text-slate-500'}`}>
-                                                    {loan.netProfit > 0 ? '+' : ''}${loan.netProfit.toLocaleString()}
-                                                </td>
-                                                <td className="px-4 py-3">
-                                                    <span className={`px-2 py-1 rounded text-xs ${
-                                                        loan.status === 'Paid Off' ? 'bg-emerald-500/20 text-emerald-400' : 
-                                                        loan.status === 'Pending Purchase' ? 'bg-amber-500/20 text-amber-400' : 'bg-blue-500/20 text-blue-400'
-                                                    }`}>
-                                                        {loan.status}
-                                                    </span>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            );
-        };
+        let chartInstance = null;
+        function renderChart(accounts) {
+            const ctx = document.getElementById('allocationChart').getContext('2d');
+            
+            // Group by type
+            const groups = {};
+            accounts.forEach(acc => {
+                if(acc.balance > 0) {
+                    groups[acc.type] = (groups[acc.type] || 0) + acc.balance;
+                }
+            });
 
-        const App = () => {
-            const [data, setData] = useState(MOCK_DATA);
-            const [netWorth, setNetWorth] = useState(0);
-            const [liquidCash, setLiquidCash] = useState(0);
-            const [debt, setDebt] = useState(0);
+            const labels = Object.keys(groups);
+            const data = Object.values(groups);
+            const colors = ['#38bdf8', '#818cf8', '#4ade80', '#fbbf24'];
 
-            useEffect(() => {
-                let nw = 0;
-                let cash = 0;
-                let d = 0;
-                data.accounts.forEach(acc => {
-                    nw += acc.balance;
-                    if (acc.type === 'bank') cash += acc.balance;
-                    if (acc.balance < 0) d += Math.abs(acc.balance);
-                });
-                setNetWorth(nw);
-                setLiquidCash(cash);
-                setDebt(d);
-            }, [data]);
+            if(chartInstance) chartInstance.destroy();
 
-            const COLORS = ['#38bdf8', '#818cf8', '#34d399', '#f472b6', '#fbbf24'];
+            chartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: colors,
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { color: '#94a3b8' } }
+                    }
+                }
+            });
+        }
 
-            return (
-                <div className="min-h-screen pb-20">
-                    {/* Header */}
-                    <header className="sticky top-0 z-50 glass-panel border-b border-slate-700/50">
-                        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center text-white font-bold">T</div>
-                                <h1 className="text-xl font-bold tracking-tight text-white">TDEX <span className="text-slate-500 font-normal text-sm ml-2">Personal Finance OS</span></h1>
-                            </div>
-                            <div className="flex items-center gap-4">
-                                <button className="text-slate-400 hover:text-white transition-colors"><i className="fas fa-cog"></i></button>
-                                <div className="w-8 h-8 rounded-full bg-slate-700 border border-slate-600"></div>
-                            </div>
-                        </div>
-                    </header>
+        function loadData() {
+            // In a real app, this would fetch from Google Apps Script
+            // fetch('YOUR_APPS_SCRIPT_URL')...
+            console.log("Loading data...");
+            renderDashboard(MOCK_DATA);
+        }
 
-                    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-                        
-                        {/* Net Worth Summary */}
-                        <section>
-                            <h2 className="text-2xl font-bold text-white mb-6">Financial Overview</h2>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <StatCard title="Net Worth" value={`$${netWorth.toLocaleString()}`} subtext="+2.4% this month" icon="fa-wallet" color="blue" />
-                                <StatCard title="Liquid Cash" value={`$${liquidCash.toLocaleString()}`} subtext="Available for investment" icon="fa-coins" color="emerald" />
-                                <StatCard title="Total Debt" value={`$${debt.toLocaleString()}`} subtext="Including Credit & Loans" icon="fa-file-invoice-dollar" color="rose" />
-                            </div>
-                        </section>
+        // Initialize
+        window.addEventListener('DOMContentLoaded', () => {
+            loadData();
+        });
 
-                        {/* Main Grid */}
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                            
-                            {/* Left Column: Accounts & Charts */}
-                            <div className="lg:col-span-2 space-y-8">
-                                
-                                {/* Hey Sparty Section */}
-                                <section>
-                                    <div className="flex items-center gap-3 mb-6">
-                                        <div className="w-2 h-8 bg-amber-500 rounded-full"></div>
-                                        <h2 className="text-2xl font-bold text-white">Hey Sparty <span className="text-sm font-normal text-slate-400 ml-2">ESPP & PLOC Tracker</span></h2>
-                                    </div>
-                                    <HeySparty />
-                                </section>
-
-                                {/* Investment Growth Chart */}
-                                <section className="card rounded-xl p-6">
-                                    <h3 className="text-lg font-bold text-white mb-4">Investment Growth</h3>
-                                    <div className="h-64 w-full">
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <LineChart data={data.investments}>
-                                                <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                                                <XAxis dataKey="date" stroke="#94a3b8" />
-                                                <YAxis stroke="#94a3b8" />
-                                                <Tooltip contentStyle={{backgroundColor: '#1e293b', borderColor: '#334155', color: '#fff'}} />
-                                                <Line type="monotone" dataKey="value" stroke="#38bdf8" strokeWidth={3} dot={{r: 4, fill: '#38bdf8'}} />
-                                            </LineChart>
-                                        </ResponsiveContainer>
-                                    </div>
-                                </section>
-                            </div>
-
-                            {/* Right Column: Account List */}
-                            <div className="space-y-8">
-                                <section className="card rounded-xl p-6">
-                                    <h3 className="text-lg font-bold text-white mb-4">Accounts</h3>
-                                    <div className="space-y-1">
-                                        {data.accounts.map(account => (
-                                            <AccountRow key={account.id} account={account} />
-                                        ))}
-                                    </div>
-                                    <button className="w-full mt-4 py-3 rounded-lg border border-dashed border-slate-600 text-slate-400 hover:text-white hover:border-slate-400 transition-all text-sm font-medium">
-                                        + Connect New Account
-                                    </button>
-                                </section>
-
-                                <section className="card rounded-xl p-6">
-                                    <h3 className="text-lg font-bold text-white mb-4">Asset Allocation</h3>
-                                    <div className="h-48 w-full relative">
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <PieChart>
-                                                <Pie data={[
-                                                    { name: 'Cash', value: liquidCash },
-                                                    { name: 'Investments', value: 57300 },
-                                                    { name: 'Other', value: 15000 }
-                                                ]} innerRadius={40} outerRadius={70} paddingAngle={5} dataKey="value">
-                                                    {COLORS.map((color, index) => <Cell key={`cell-${index}`} fill={color} />)}
-                                                </Pie>
-                                                <Tooltip contentStyle={{backgroundColor: '#1e293b', borderColor: '#334155', color: '#fff'}} />
-                                            </PieChart>
-                                        </ResponsiveContainer>
-                                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                            <span className="text-xs text-slate-400">Distribution</span>
-                                        </div>
-                                    </div>
-                                    <div className="mt-4 space-y-2">
-                                        <div className="flex justify-between text-xs text-slate-400"><span>Cash</span><span className="text-blue-400">20%</span></div>
-                                        <div className="flex justify-between text-xs text-slate-400"><span>Investments</span><span className="text-indigo-400">65%</span></div>
-                                        <div className="flex justify-between text-xs text-slate-400"><span>Other</span><span className="text-emerald-400">15%</span></div>
-                                    </div>
-                                </section>
-                            </div>
-                        </div>
-                    </main>
-                </div>
-            );
-        };
-
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
     </script>
 </body>
 </html>
